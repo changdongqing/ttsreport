@@ -56,6 +56,11 @@
             <i class="iconfont iconliulan"></i>
           </el-button>
         </el-tooltip>
+        <el-tooltip class="item" effect="dark" content="导出" placement="bottom-start">
+          <el-button type="text" @click="showExportDialog()">
+            <i class="el-icon-download"></i>
+          </el-button>
+        </el-tooltip>
       </div>
 
       <!-- Analysis Config Panel -->
@@ -143,96 +148,49 @@
               <!-- 主题风格 -->
               <div class="style-section">
                 <div class="style-section-title">主题风格</div>
-                <div class="config-row">
-                  <label>类型：</label>
-                  <el-radio-group v-model="styleConfig.hierarchyType" size="mini" @change="refreshS2">
-                    <el-radio-button label="grid">平铺</el-radio-button>
-                    <el-radio-button label="tree">树状</el-radio-button>
-                  </el-radio-group>
-                </div>
-                <div class="config-row">
-                  <label>主题：</label>
-                  <el-select v-model="styleConfig.themeName" size="mini" style="width:140px" @change="refreshS2">
-                    <el-option label="默认" value="default" />
-                    <el-option label="简约灰" value="gray" />
-                    <el-option label="多彩蓝" value="colorful" />
-                  </el-select>
-                </div>
-                <div class="config-row">
-                  <label>主题色：</label>
-                  <el-color-picker v-model="styleConfig.themeColor" size="mini" @change="refreshS2" />
-                  <el-button v-if="styleConfig.themeColor" type="text" size="mini" style="margin-left:4px" @click="clearThemeColor">清除</el-button>
+                <div class="config-row compact">
+                  <span class="config-item"><label>类型：</label><el-radio-group v-model="styleConfig.hierarchyType" size="mini" @change="refreshS2"><el-radio-button label="grid">平铺</el-radio-button><el-radio-button label="tree">树状</el-radio-button></el-radio-group></span>
+                  <span class="config-item"><label>主题：</label><el-select v-model="styleConfig.themeName" size="mini" style="width:80px" @change="refreshS2"><el-option label="默认" value="default" /><el-option label="简约灰" value="gray" /><el-option label="多彩蓝" value="colorful" /></el-select></span>
+                  <span class="config-item"><label>主题色：</label><el-color-picker v-model="styleConfig.themeColor" size="mini" @change="refreshS2" /><el-button v-if="styleConfig.themeColor" type="text" size="mini" style="margin-left:2px" @click="clearThemeColor">清除</el-button></span>
                 </div>
               </div>
 
               <!-- 显示模式 -->
               <div class="style-section">
                 <div class="style-section-title">显示模式</div>
-                <div class="config-row">
-                  <label>宽度调整：</label>
-                  <el-radio-group v-model="styleConfig.colWidthType" size="mini" @change="refreshS2">
-                    <el-radio-button label="adaptive">列等宽</el-radio-button>
-                    <el-radio-button label="compact">列紧凑</el-radio-button>
-                  </el-radio-group>
-                </div>
-                <div class="config-row">
-                  <label>宽高自适应：</label>
-                  <el-switch v-model="styleConfig.autoFit" size="mini" @change="refreshS2" />
-                </div>
-                <div v-if="!styleConfig.autoFit" class="config-row">
-                  <label>表格宽度：</label>
-                  <el-input-number v-model="styleConfig.tableWidth" size="mini" :min="200" :max="5000" :step="50" controls-position="right" style="width:120px" @change="refreshS2" />
-                </div>
-                <div v-if="!styleConfig.autoFit" class="config-row">
-                  <label>表格高度：</label>
-                  <el-input-number v-model="styleConfig.tableHeight" size="mini" :min="100" :max="5000" :step="50" controls-position="right" style="width:120px" @change="refreshS2" />
-                </div>
-                <div class="config-row">
-                  <label>冻结行头：</label>
-                  <el-switch v-model="styleConfig.frozenRowHeader" size="mini" @change="refreshS2" />
+                <div class="config-row compact">
+                  <span class="config-item"><label>宽度：</label><el-radio-group v-model="styleConfig.colWidthType" size="mini" @change="refreshS2"><el-radio-button label="adaptive">列等宽</el-radio-button><el-radio-button label="compact">列紧凑</el-radio-button></el-radio-group></span>
+                  <span class="config-item"><label>自适应：</label><el-switch v-model="styleConfig.autoFit" size="mini" @change="refreshS2" /></span>
+                  <span class="config-item" v-if="!styleConfig.autoFit"><label>尺寸：</label><el-input-number v-model="styleConfig.tableWidth" size="mini" :min="200" :max="5000" :step="50" controls-position="right" style="width:70px" @change="refreshS2" />×<el-input-number v-model="styleConfig.tableHeight" size="mini" :min="100" :max="5000" :step="50" controls-position="right" style="width:70px" @change="refreshS2" /></span>
+                  <span class="config-item"><label>冻结：</label><el-switch v-model="styleConfig.frozenRowHeader" size="mini" @change="refreshS2" /></span>
                 </div>
               </div>
 
               <!-- 行序号和分页 -->
               <div class="style-section">
                 <div class="style-section-title">行序号和分页</div>
-                <div class="config-row">
-                  <label>显示行序号：</label>
-                  <el-switch v-model="styleConfig.showSeriesNumber" size="mini" @change="refreshS2" />
-                </div>
-                <div class="config-row">
-                  <label>显示分页：</label>
-                  <el-switch v-model="styleConfig.showPagination" size="mini" @change="onShowPaginationChange" />
-                </div>
-                <div v-if="styleConfig.showPagination" class="config-row">
-                  <label>每页行数：</label>
-                  <el-input-number v-model="styleConfig.pageSize" size="mini" :min="5" :max="500" :step="5" controls-position="right" style="width:100px" @change="onPageSizeChange" />
+                <div class="config-row compact">
+                  <span class="config-item"><label>行号：</label><el-switch v-model="styleConfig.showSeriesNumber" size="mini" @change="refreshS2" /></span>
+                  <span class="config-item"><label>分页：</label><el-switch v-model="styleConfig.showPagination" size="mini" @change="onShowPaginationChange" /></span>
+                  <span class="config-item" v-if="styleConfig.showPagination"><label>每页：</label><el-input-number v-model="styleConfig.pageSize" size="mini" :min="5" :max="500" :step="5" controls-position="right" style="width:80px" @change="onPageSizeChange" /> 行</span>
                 </div>
               </div>
 
               <!-- 行小计/总计 -->
               <div class="style-section">
                 <div class="style-section-title">行小计/总计</div>
-                <div class="config-row">
-                  <label>显示行小计：</label>
-                  <el-switch v-model="styleConfig.showRowSubTotals" size="mini" @change="refreshS2" />
-                </div>
-                <div class="config-row">
-                  <label>显示行总计：</label>
-                  <el-switch v-model="styleConfig.showRowGrandTotals" size="mini" @change="refreshS2" />
+                <div class="config-row compact">
+                  <span class="config-item"><label>行小计：</label><el-switch v-model="styleConfig.showRowSubTotals" size="mini" @change="refreshS2" /></span>
+                  <span class="config-item"><label>行总计：</label><el-switch v-model="styleConfig.showRowGrandTotals" size="mini" @change="refreshS2" /></span>
                 </div>
               </div>
 
               <!-- 列小计/总计 -->
               <div class="style-section">
                 <div class="style-section-title">列小计/总计</div>
-                <div class="config-row">
-                  <label>显示列小计：</label>
-                  <el-switch v-model="styleConfig.showColSubTotals" size="mini" @change="refreshS2" />
-                </div>
-                <div class="config-row">
-                  <label>显示列总计：</label>
-                  <el-switch v-model="styleConfig.showColGrandTotals" size="mini" @change="refreshS2" />
+                <div class="config-row compact">
+                  <span class="config-item"><label>列小计：</label><el-switch v-model="styleConfig.showColSubTotals" size="mini" @change="refreshS2" /></span>
+                  <span class="config-item"><label>列总计：</label><el-switch v-model="styleConfig.showColGrandTotals" size="mini" @change="refreshS2" /></span>
                 </div>
               </div>
             </div>
@@ -267,6 +225,31 @@
           />
         </div>
       </div>
+
+      <!-- Export Dialog -->
+      <el-dialog
+        title="导出数据"
+        :visible.sync="exportDialogVisible"
+        width="400px"
+      >
+        <div class="export-options">
+          <el-button type="primary" plain size="medium" @click="handleCopyRawData" style="width:100%;margin-bottom:10px">
+            <i class="el-icon-document-copy"></i> 复制原始数据
+          </el-button>
+          <el-button type="primary" plain size="medium" @click="handleCopyFormattedData" style="width:100%;margin-bottom:10px">
+            <i class="el-icon-document-copy"></i> 复制格式化数据
+          </el-button>
+          <el-button type="success" plain size="medium" @click="handleDownloadRawData" style="width:100%;margin-bottom:10px">
+            <i class="el-icon-download"></i> 下载原始数据
+          </el-button>
+          <el-button type="success" plain size="medium" @click="handleDownloadFormattedData" style="width:100%">
+            <i class="el-icon-download"></i> 下载格式化数据
+          </el-button>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="exportDialogVisible = false">关闭</el-button>
+        </span>
+      </el-dialog>
     </div>
 
     <!-- Dataset selection dialog -->
@@ -353,6 +336,9 @@ export default {
       // Pagination state
       currentPage: 1,
       totalRows: 0,
+
+      // Export dialog
+      exportDialogVisible: false,
 
       // Report Excel DTO for saving
       reportExcelDto: {
@@ -660,11 +646,50 @@ export default {
         }
         this.s2Instance.setThemeCfg(themeCfg);
 
+        // 计算总行数：根据表格类型使用不同的计算方式
+        if (this.analysisConfig.mode === "pivot") {
+          // 透视表：使用 S2 渲染完成事件获取实际的行节点数
+          var _this = this;
+          var updateTotalRows = function() {
+            try {
+              if (_this.s2Instance && _this.s2Instance.facet) {
+                var facet = _this.s2Instance.facet;
+                var layoutResult = facet.layoutResult;
+                if (layoutResult && layoutResult.rowLeafNodes) {
+                  // 获取透视后的实际行数（叶子节点）
+                  _this.totalRows = layoutResult.rowLeafNodes.length;
+                } else if (layoutResult && layoutResult.rowNodes) {
+                  // 备选方案：过滤出叶子节点
+                  var leafNodes = layoutResult.rowNodes.filter(function(node) {
+                    return node.isLeaf;
+                  });
+                  _this.totalRows = leafNodes.length;
+                } else {
+                  _this.totalRows = _this.rawData ? _this.rawData.length : 0;
+                }
+              } else {
+                _this.totalRows = _this.rawData ? _this.rawData.length : 0;
+              }
+            } catch (e) {
+              console.warn("获取透视表行数失败，使用原始数据行数:", e);
+              _this.totalRows = _this.rawData ? _this.rawData.length : 0;
+            }
+          };
+          // 监听渲染完成事件
+          this.s2Instance.on(S2.S2Event.RENDER_COMPLETED, updateTotalRows);
+          // 同时使用 nextTick 作为后备方案
+          this.$nextTick(function() {
+            updateTotalRows();
+          });
+        } else {
+          // 明细表：使用原始数据行数
+          this.totalRows = this.rawData ? this.rawData.length : 0;
+        }
+
         this.s2Instance.render();
-        this.totalRows = this.rawData ? this.rawData.length : 0;
       } catch (e) {
         console.error("Failed to render S2:", e);
-        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f56c6c;">S2 渲染失败: ' + e.message + '</div>';
+        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f56c6c;">S2 渲染失败：' + e.message + '</div>';
       }
     },
 
@@ -689,6 +714,66 @@ export default {
     handlePageChange(page) {
       this.currentPage = page;
       this.refreshS2();
+    },
+
+    showExportDialog() {
+      if (!this.s2Instance) {
+        this.$message.warning('没有可导出的数据');
+        return;
+      }
+      this.exportDialogVisible = true;
+    },
+
+    async handleCopyRawData() {
+      try {
+        const { copyData } = await import('@antv/s2');
+        const copyContent = copyData(this.s2Instance, '\t', false);
+        await navigator.clipboard.writeText(copyContent);
+        this.$message.success('原始数据已复制到剪贴板');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Copy raw data failed:', e);
+        this.$message.error('复制失败：' + e.message);
+      }
+    },
+
+    async handleCopyFormattedData() {
+      try {
+        const { copyData } = await import('@antv/s2');
+        const copyContent = copyData(this.s2Instance, '\t', { isFormatHeader: true, isFormatData: true });
+        await navigator.clipboard.writeText(copyContent);
+        this.$message.success('格式化数据已复制到剪贴板');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Copy formatted data failed:', e);
+        this.$message.error('复制失败：' + e.message);
+      }
+    },
+
+    async handleDownloadRawData() {
+      try {
+        const { copyData, download } = await import('@antv/s2');
+        const csvContent = copyData(this.s2Instance, ',', false);
+        download(csvContent, 'analysis_data_raw.csv');
+        this.$message.success('原始数据下载成功');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Download raw data failed:', e);
+        this.$message.error('下载失败：' + e.message);
+      }
+    },
+
+    async handleDownloadFormattedData() {
+      try {
+        const { copyData, download } = await import('@antv/s2');
+        const csvContent = copyData(this.s2Instance, ',', { isFormatHeader: true, isFormatData: true });
+        download(csvContent, 'analysis_data_formatted.csv');
+        this.$message.success('格式化数据下载成功');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Download formatted data failed:', e);
+        this.$message.error('下载失败：' + e.message);
+      }
     },
 
     clearThemeColor() {
@@ -982,8 +1067,8 @@ export default {
     padding: 8px 0;
 
     .style-section {
-      margin-bottom: 12px;
-      padding-bottom: 10px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
       border-bottom: 1px solid #f0f0f0;
 
       &:last-child {
@@ -995,24 +1080,39 @@ export default {
         font-size: 12px;
         font-weight: bold;
         color: #409eff;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         padding-left: 4px;
         border-left: 3px solid #409eff;
       }
     }
 
     .config-row {
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       display: flex;
       align-items: center;
 
+      &.compact {
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        margin-bottom: 0;
+      }
+
       label {
-        width: 80px;
-        text-align: right;
-        margin-right: 8px;
+        width: auto;
+        margin-right: 4px;
         font-size: 12px;
         color: #606266;
         flex-shrink: 0;
+      }
+    }
+
+    .config-item {
+      display: inline-flex;
+      align-items: center;
+
+      label {
+        margin-right: 4px;
+        white-space: nowrap;
       }
     }
   }
@@ -1038,5 +1138,10 @@ export default {
   flex-shrink: 0;
   padding: 8px 0 0;
   text-align: center;
+}
+
+.export-options {
+  display: flex;
+  flex-direction: column;
 }
 </style>

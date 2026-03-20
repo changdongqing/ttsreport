@@ -290,7 +290,9 @@ export default {
                 this.paramMetaMap[setCode][param.paramName] = {
                   paramType: param.paramType,
                   dictCode: param.dictCode,
-                  extParam: param.extParam
+                  extParam: param.extParam,
+                  sampleItem: param.sampleItem,
+                  defaultValue: param.defaultValue
                 };
                 // Pre-fetch dict options
                 if (param.dictCode && !this.dictOptionsCache[param.dictCode]) {
@@ -317,7 +319,13 @@ export default {
       const extendArray = [];
       for (const i in (extendObj || {})) {
         const children = [];
-        for (const y in extendObj[i]) {
+        
+        // Get all param names from both extendObj and paramMetaMap
+        const paramNamesFromExtend = Object.keys(extendObj[i]);
+        const paramNamesFromMeta = this.paramMetaMap[i] ? Object.keys(this.paramMetaMap[i]) : [];
+        const allParamNames = [...new Set([...paramNamesFromExtend, ...paramNamesFromMeta])];
+        
+        for (const y of allParamNames) {
           const meta = (this.paramMetaMap[i] && this.paramMetaMap[i][y]) || {};
           const dictCode = meta.dictCode || '';
           const dictOptions = dictCode ? (this.dictOptionsCache[dictCode] || []) : [];
@@ -329,9 +337,18 @@ export default {
               extParamOptions = [];
             }
           }
+          
+          // Determine value: use extendObj value if present, otherwise use sampleItem or defaultValue from meta
+          let paramValue;
+          if (extendObj[i] && extendObj[i][y] !== undefined) {
+            paramValue = extendObj[i][y];
+          } else {
+            paramValue = meta.sampleItem || meta.defaultValue || '';
+          }
+          
           children.push({
             name: y,
-            value: this.resolveParamValue(extendObj[i][y]),
+            value: this.resolveParamValue(paramValue),
             paramType: meta.paramType || '输入框',
             dictCode: dictCode,
             dictOptions: dictOptions,

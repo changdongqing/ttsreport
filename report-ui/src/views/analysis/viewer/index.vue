@@ -74,6 +74,7 @@
       <div class="action-buttons">
         <el-button type="primary" size="small" @click="searchPreview">查询</el-button>
         <el-button size="small" @click="resetQuery">重置</el-button>
+        <el-button size="small" @click="showExportDialog">导出</el-button>
       </div>
     </div>
     <div class="layout-middle">
@@ -102,6 +103,31 @@
         />
       </div>
     </div>
+
+    <!-- Export Dialog -->
+    <el-dialog
+      title="导出数据"
+      :visible.sync="exportDialogVisible"
+      width="400px"
+    >
+      <div class="export-options">
+        <el-button type="primary" plain size="medium" @click="handleCopyRawData" style="width:100%;margin-bottom:10px">
+          <i class="el-icon-document-copy"></i> 复制原始数据
+        </el-button>
+        <el-button type="primary" plain size="medium" @click="handleCopyFormattedData" style="width:100%;margin-bottom:10px">
+          <i class="el-icon-document-copy"></i> 复制格式化数据
+        </el-button>
+        <el-button type="success" plain size="medium" @click="handleDownloadRawData" style="width:100%;margin-bottom:10px">
+          <i class="el-icon-download"></i> 下载原始数据
+        </el-button>
+        <el-button type="success" plain size="medium" @click="handleDownloadFormattedData" style="width:100%">
+          <i class="el-icon-download"></i> 下载格式化数据
+        </el-button>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="exportDialogVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -109,6 +135,7 @@
 import { detailByReportCode, detailBysetCode } from "@/api/GaeaReport";
 import { testTransformSet } from "@/api/report";
 import { getDictList } from "@/api/dict-data";
+import { getAccessUser } from "@/utils/auth";
 
 export default {
   name: "AnalysisViewer",
@@ -141,7 +168,9 @@ export default {
       s2Instance: null,
       // Pagination state
       currentPage: 1,
-      totalRows: 0
+      totalRows: 0,
+      // Export dialog
+      exportDialogVisible: false
     };
   },
   created() {
@@ -253,11 +282,17 @@ export default {
         var dataSetDto = dataSetResult.data;
 
         // 7. Build query conditions UI (on first load only)
-        if (this.tableData2.length === 0 && setParamObj && setParamObj[setCode]) {
+        if (this.tableData2.length === 0) {
           var children = [];
-          var paramValues = setParamObj[setCode];
           var paramMetaList = dataSetDto.dataSetParamDtoList || [];
-          var paramNames = Object.keys(paramValues);
+          
+          // If we have setParamObj, use it; otherwise, build from paramMetaList
+          var paramNames = [];
+          if (setParamObj && setParamObj[setCode]) {
+            paramNames = Object.keys(setParamObj[setCode]);
+          } else {
+            paramNames = paramMetaList.map(p => p.paramName);
+          }
 
           for (var ni = 0; ni < paramNames.length; ni++) {
             var paramName = paramNames[ni];
@@ -294,9 +329,17 @@ export default {
               }
             }
 
+            // Determine value: use setParam value if present, otherwise use sampleItem or defaultValue
+            var paramValue;
+            if (setParamObj && setParamObj[setCode] && setParamObj[setCode][paramName] !== undefined) {
+              paramValue = setParamObj[setCode][paramName];
+            } else {
+              paramValue = meta.sampleItem || meta.defaultValue || "";
+            }
+
             children.push({
               name: paramName,
-              value: paramValues[paramName],
+              value: this.resolveParamValue(paramValue),
               paramType: meta.paramType || "输入框",
               dictCode: dictCode,
               dictOptions: dictOptions,
@@ -459,11 +502,50 @@ export default {
         }
         this.s2Instance.setThemeCfg(themeCfg);
 
+        // 计算总行数：根据表格类型使用不同的计算方式
+        if (config && config.mode === "pivot") {
+          // 透视表：使用 S2 渲染完成事件获取实际的行节点数
+          var _this = this;
+          var updateTotalRows = function() {
+            try {
+              if (_this.s2Instance && _this.s2Instance.facet) {
+                var facet = _this.s2Instance.facet;
+                var layoutResult = facet.layoutResult;
+                if (layoutResult && layoutResult.rowLeafNodes) {
+                  // 获取透视后的实际行数（叶子节点）
+                  _this.totalRows = layoutResult.rowLeafNodes.length;
+                } else if (layoutResult && layoutResult.rowNodes) {
+                  // 备选方案：过滤出叶子节点
+                  var leafNodes = layoutResult.rowNodes.filter(function(node) {
+                    return node.isLeaf;
+                  });
+                  _this.totalRows = leafNodes.length;
+                } else {
+                  _this.totalRows = _this.rawData ? _this.rawData.length : 0;
+                }
+              } else {
+                _this.totalRows = _this.rawData ? _this.rawData.length : 0;
+              }
+            } catch (e) {
+              console.warn("获取透视表行数失败，使用原始数据行数:", e);
+              _this.totalRows = _this.rawData ? _this.rawData.length : 0;
+            }
+          };
+          // 监听渲染完成事件
+          this.s2Instance.on(S2.S2Event.RENDER_COMPLETED, updateTotalRows);
+          // 同时使用 nextTick 作为后备方案
+          this.$nextTick(function() {
+            updateTotalRows();
+          });
+        } else {
+          // 明细表：使用原始数据行数
+          this.totalRows = this.rawData ? this.rawData.length : 0;
+        }
+
         this.s2Instance.render();
-        this.totalRows = this.rawData ? this.rawData.length : 0;
       } catch (e) {
         console.error("Failed to render S2:", e);
-        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f56c6c;">S2 渲染失败: ' + e.message + "</div>";
+        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f56c6c;">S2 渲染失败：' + e.message + "</div>";
       }
     },
 
@@ -472,6 +554,95 @@ export default {
       this.renderS2();
     },
 
+    showExportDialog() {
+      if (!this.s2Instance) {
+        this.$message.warning('没有可导出的数据');
+        return;
+      }
+      this.exportDialogVisible = true;
+    },
+
+    async handleCopyRawData() {
+      try {
+        const { copyData } = await import('@antv/s2');
+        const copyContent = copyData(this.s2Instance, '\t', false);
+        await navigator.clipboard.writeText(copyContent);
+        this.$message.success('原始数据已复制到剪贴板');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Copy raw data failed:', e);
+        this.$message.error('复制失败：' + e.message);
+      }
+    },
+
+    async handleCopyFormattedData() {
+      try {
+        const { copyData } = await import('@antv/s2');
+        const copyContent = copyData(this.s2Instance, '\t', { isFormatHeader: true, isFormatData: true });
+        await navigator.clipboard.writeText(copyContent);
+        this.$message.success('格式化数据已复制到剪贴板');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Copy formatted data failed:', e);
+        this.$message.error('复制失败：' + e.message);
+      }
+    },
+
+    async handleDownloadRawData() {
+      try {
+        const { copyData, download } = await import('@antv/s2');
+        const csvContent = copyData(this.s2Instance, ',', false);
+        download(csvContent, 'analysis_data_raw.csv');
+        this.$message.success('原始数据下载成功');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Download raw data failed:', e);
+        this.$message.error('下载失败：' + e.message);
+      }
+    },
+
+    async handleDownloadFormattedData() {
+      try {
+        const { copyData, download } = await import('@antv/s2');
+        const csvContent = copyData(this.s2Instance, ',', { isFormatHeader: true, isFormatData: true });
+        download(csvContent, 'analysis_data_formatted.csv');
+        this.$message.success('格式化数据下载成功');
+        this.exportDialogVisible = false;
+      } catch (e) {
+        console.error('Download formatted data failed:', e);
+        this.$message.error('下载失败：' + e.message);
+      }
+    },
+
+    resolveParamValue(value) {
+      if (!value || typeof value !== 'string' || !value.startsWith('@')) return value;
+      const now = new Date();
+      const fmt = d => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      switch (value) {
+        case '@当天': return fmt(now);
+        case '@昨天': { const d = new Date(now); d.setDate(d.getDate() - 1); return fmt(d); }
+        case '@当月第一天': return fmt(new Date(now.getFullYear(), now.getMonth(), 1));
+        case '@当月最后一天': return fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        case '@上月第一天': return fmt(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+        case '@上月最后一天': return fmt(new Date(now.getFullYear(), now.getMonth(), 0));
+        case '@当年第一天': return fmt(new Date(now.getFullYear(), 0, 1));
+        case '@当年最后一天': return fmt(new Date(now.getFullYear(), 11, 31));
+        case '@当前登录用户': {
+          const user = getAccessUser();
+          return (user && user.loginName) ? user.loginName : '';
+        }
+        case '@当前登录用户部门': {
+          const user = getAccessUser();
+          return (user && user.deptName) ? user.deptName : '';
+        }
+        default: return value;
+      }
+    },
     toObject(val) {
       var objfirst = {};
       var objSecond = {};
@@ -575,12 +746,13 @@ export default {
   .action-buttons {
     display: flex;
     align-items: center;
-    gap: 20px;
-
-    .el-button + .el-button {
-      margin-left: 0;
-    }
+    gap: 10px;
   }
+}
+
+.export-options {
+  display: flex;
+  flex-direction: column;
 }
 
 .layout-middle {
